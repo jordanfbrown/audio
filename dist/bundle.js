@@ -17,6 +17,12 @@ var audioMetaData = require("audio-metadata");
 var _ = require("lodash");
 
 var App = React.createClass({ displayName: "App",
+  getInitialState: function () {
+    return {
+      songs: JSON.parse(localStorage.getItem("songs") || "[]")
+    };
+  },
+
   onDrop: function (e) {
     this.stopEvent(e);
     this.populateFileQueue(e.dataTransfer.files);
@@ -34,6 +40,15 @@ var App = React.createClass({ displayName: "App",
 
   fileLoaded: function (e) {
     var metadata = audioMetaData.id3v2(e.target.result);
+    var song = {
+      artist: metadata.artist || metadata.TALB,
+      title: metadata.title || metadata.TIT2,
+      bpm: metadata.TBPM,
+      key: metadata.TKEY
+    };
+    var songs = this.state.songs.concat(song);
+    this.setState({ songs: songs });
+    localStorage.setItem("songs", JSON.stringify(songs));
     this.readFileFromQueue();
   },
 
@@ -51,7 +66,11 @@ var App = React.createClass({ displayName: "App",
   },
 
   render: function () {
-    return React.createElement("div", { id: "app-wrapper" }, React.createElement("h1", null, "Audiodyssey"), React.createElement("div", { id: "dropbox", className: "well", onDrop: this.onDrop, onDragOver: this.stopEvent, onDragEnter: this.stopEvent }, React.createElement("h4", { className: "text-center" }, "Drop Files Here")));
+    var rows = this.state.songs.map(function (song) {
+      return React.createElement("tr", null, React.createElement("td", null, song.artist), React.createElement("td", null, song.title), React.createElement("td", null, song.bpm), React.createElement("td", null, song.key));
+    });
+
+    return React.createElement("div", { id: "app-wrapper" }, React.createElement("h1", null, "Audiodyssey"), React.createElement("div", { id: "dropbox", className: "well", onDrop: this.onDrop, onDragOver: this.stopEvent, onDragEnter: this.stopEvent }, React.createElement("h4", { className: "text-center" }, "Drop Files Here")), React.createElement("table", { className: "table table-striped" }, React.createElement("thead", null, React.createElement("tr", null, React.createElement("th", null, "Artist"), React.createElement("th", null, "Title"), React.createElement("th", null, "BPM"), React.createElement("th", null, "Key"))), React.createElement("tbody", null, rows)));
   }
 });
 
