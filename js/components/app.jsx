@@ -2,6 +2,7 @@ var React = require('react');
 var reader = new FileReader();
 var audioMetaData = require('audio-metadata');
 var _ = require('lodash');
+var Table = require('reactable').Table;
 
 var App = React.createClass({
   getInitialState: function() {
@@ -28,22 +29,26 @@ var App = React.createClass({
   fileLoaded: function(e) {
     var metadata = audioMetaData.id3v2(e.target.result);
     var song = {
-      artist: metadata.artist || metadata.TALB,
-      title: metadata.title || metadata.TIT2,
-      bpm: metadata.TBPM,
-      key: metadata.TKEY
+      Artist: metadata.artist || metadata.TALB,
+      Title: metadata.title || metadata.TIT2,
+      BPM: metadata.TBPM,
+      KEY: metadata.TKEY,
     };
-    var songs = this.state.songs.concat(song);
-    this.setState({ songs: songs });
-    localStorage.setItem('songs', JSON.stringify(songs));
+
+    if (_.where(this.state.songs, song).length) {
+      this.showError(song.Title + ' has already been added.')
+    }
+    else {
+      var songs = this.state.songs.concat(song);
+      this.setState({ songs: songs });
+      localStorage.setItem('songs', JSON.stringify(songs));
+    }
+
     this.readFileFromQueue();
   },
 
   populateFileQueue: function (files) {
-    _.each(files, function(file) {
-      this.fileQueue.push(file)
-    }.bind(this));
-
+    _.each(files, function(file) { this.fileQueue.push(file) }.bind(this));
     this.readFileFromQueue();
   },
 
@@ -52,17 +57,24 @@ var App = React.createClass({
     if (file) reader.readAsArrayBuffer(file);
   },
 
+  clearSongs: function() {
+    localStorage.removeItem('songs')
+    this.setState({ songs: [] })
+  },
+
+  showError: function(error) {
+    this.setState({ error: error })
+    _.delay(function() {
+      this.setState({ error: null })
+    }.bind(this), 5000);
+  },
+
   render: function () {
-    var rows = this.state.songs.map(function(song) {
-      return (
-        <tr>
-          <td>{song.artist}</td>
-          <td>{song.title}</td>
-          <td>{song.bpm}</td>
-          <td>{song.key}</td>
-        </tr>
-      )
-    });
+    var errorAlert;
+
+    if (this.state.error) {
+      errorAlert = <div className="alert alert-danger bottom-affix" role="alert">{this.state.error}</div>;
+    }
 
     return (
       <div id="app-wrapper">
@@ -70,19 +82,11 @@ var App = React.createClass({
         <div id="dropbox" className="well" onDrop={this.onDrop} onDragOver={this.stopEvent} onDragEnter={this.stopEvent}>
           <h4 className="text-center">Drop Files Here</h4>
         </div>
-        <table className="table table-striped">
-          <thead>
-            <tr>
-              <th>Artist</th>
-              <th>Title</th>
-              <th>BPM</th>
-              <th>Key</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows}
-          </tbody>
-        </table>
+        <hr />
+        <button className="btn btn-danger" type="button" onClick={this.clearSongs}>Clear Songs</button>
+        <hr />
+        <Table className="table table-striped" data={this.state.songs} sortable={true} />
+        {errorAlert}
       </div>
     );
   }
