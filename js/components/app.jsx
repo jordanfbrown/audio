@@ -3,22 +3,14 @@ var reader = new FileReader();
 var audioMetaData = require('audio-metadata');
 var _ = require('lodash');
 var Table = require('reactable').Table;
+var {Button, ModalTrigger, ButtonToolbar} = require('react-bootstrap');
+var AddSongsModal = require('./add_songs_modal.jsx')
 
 var App = React.createClass({
   getInitialState: function() {
     return {
       songs: JSON.parse(localStorage.getItem('songs') || '[]')
     }
-  },
-
-  onDrop: function (e) {
-    this.stopEvent(e);
-    this.populateFileQueue(e.dataTransfer.files);
-  },
-
-  stopEvent: function (e) {
-    e.stopPropagation();
-    e.preventDefault();
   },
 
   componentDidMount: function () {
@@ -28,6 +20,12 @@ var App = React.createClass({
 
   fileLoaded: function(e) {
     var metadata = audioMetaData.id3v2(e.target.result);
+
+    if (!metadata) {
+      this.showError('Unable to read song information.')
+      return;
+    }
+
     var song = {
       Artist: metadata.artist || metadata.TALB,
       Title: metadata.title || metadata.TIT2,
@@ -76,14 +74,18 @@ var App = React.createClass({
       errorAlert = <div className="alert alert-danger bottom-affix" role="alert">{this.state.error}</div>;
     }
 
+    var modal = <AddSongsModal populateFileQueue={this.populateFileQueue} />;
+
     return (
       <div id="app-wrapper">
         <h1>Audiodyssey</h1>
-        <div id="dropbox" className="well" onDrop={this.onDrop} onDragOver={this.stopEvent} onDragEnter={this.stopEvent}>
-          <h4 className="text-center">Drop Files Here</h4>
-        </div>
         <hr />
-        <button className="btn btn-danger" type="button" onClick={this.clearSongs}>Clear Songs</button>
+        <ButtonToolbar>
+          <ModalTrigger modal={modal}>
+            <Button bsStyle="primary">Add Songs</Button>
+          </ModalTrigger>
+          <Button bsStyle="danger" onClick={this.clearSongs}>Clear Songs</Button>
+        </ButtonToolbar>
         <hr />
         <Table className="table table-striped" data={this.state.songs} sortable={true} />
         {errorAlert}
